@@ -73,7 +73,7 @@ func (p Path) RemoteLaunch(options map[string]string) error {
 	// highlight in nautilus
 	if fzfKey == "ctrl-n" {
 		// open file in nautilus and highlight it
-		return exec.Command("nautilus", path).Run()
+		return exec.Command("nautilus", path).Start()
 	}
 
 	// open in terminal
@@ -93,27 +93,6 @@ func (p Path) RemoteLaunch(options map[string]string) error {
 	}
 
 	return ErrKeyNotHandled
-
-	// cmd := exec.Command("xdg-open", path)
-	// err := cmd.Run()
-
-	// exitCode := cmd.ProcessState.ExitCode()
-	// if exitCode == 3 || exitCode == 4 { // man says 3, but 4 can also happen
-	// 	// check if nautilus is present
-	// 	nautilus, _ := exec.Command("command", "-v", "nautilus").Output()
-
-	// 	// open file in nautilus and highlight it
-	// 	if len(nautilus) > 0 {
-	// 		if exec.Command(string(nautilus), path).Run() == nil {
-	// 			return nil
-	// 		}
-	// 	}
-
-	// 	// no application can open this, try the parent
-	// 	return Path(filepath.Dir(path)).RemoteLaunch(options)
-	// }
-
-	// return err
 }
 
 // provide path on the disk

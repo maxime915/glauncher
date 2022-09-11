@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+
+	"github.com/maxime915/glauncher/version"
 )
 
 var (
 	registeredTypes          = make(map[string]reflect.Type)
 	ErrTypeAlreadyRegistered = errors.New("type already registered")
 	ErrTypeNotRegistered     = errors.New("type not registered")
+	ErrVersionMisMatch       = errors.New("serialized entry was built with a different version of the launcher")
 )
 
 // return a unique identifier for a type
@@ -30,9 +33,10 @@ func RegisterEntryType[T Entry]() error {
 }
 
 type serialization struct {
-	Type    string            `json:"type"`
-	Data    []byte            `json:"data"`
-	Options map[string]string `json:"options"`
+	Type         string            `json:"type"`
+	Data         []byte            `json:"data"`
+	Options      map[string]string `json:"options"`
+	BuildVersion string            `json:"build_version"`
 }
 
 // Serialize an entry to a byte slice.
@@ -61,6 +65,9 @@ func SerializeWithOptions(entry Entry, options map[string]string) ([]byte, error
 	// store options
 	serialized.Options = options
 
+	// versioning
+	serialized.BuildVersion = version.BuildVersion()
+
 	return json.Marshal(serialized)
 }
 
@@ -77,6 +84,10 @@ func DeserializeWithOption(data []byte) (entry Entry, options map[string]string,
 	err = json.Unmarshal(data, &serialized)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if serialized.BuildVersion != version.BuildVersion() {
+		return nil, nil, ErrVersionMisMatch
 	}
 
 	// load (registered) type

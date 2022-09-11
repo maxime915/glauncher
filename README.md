@@ -19,6 +19,7 @@
 - [X] add a way to add options in the config file directly
     (the JSON is hard to modify without risking errors)
 - [X] combined CLI
+- [X] Add build version to avoid version mismatch between the processes
 
 ### Phantom symbols in fzf
 

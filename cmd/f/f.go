@@ -75,7 +75,7 @@ func StartF(ctx *cli.Context) error {
 	reader := io.MultiReader(readerList...)
 
 	fzf := frontend.NewFzfFrontend()
-	err = fzf.StartFromReader(reader)
+	err = fzf.StartFromReader(reader, conf)
 	logger.FatalIfErr(err)
 
 	selected, newOptions, err := fzf.GetSelection()

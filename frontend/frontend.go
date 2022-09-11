@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/maxime915/glauncher/config"
 )
 
 const (
@@ -23,7 +25,7 @@ var (
 
 type Frontend interface {
 	// StartFromReader starts the frontend and read entries from the reader
-	StartFromReader(io.Reader) error
+	StartFromReader(io.Reader, *config.Config) error
 	// other option with channels ?
 	// StartFromPipeline(chan <-string, ...) error
 
@@ -38,17 +40,14 @@ type Frontend interface {
 
 type FzfFrontend struct {
 	cmd             *exec.Cmd
-	params          map[string]string
 	selectionBuffer bytes.Buffer
 }
 
 func NewFzfFrontend() *FzfFrontend {
-	return &FzfFrontend{
-		params: make(map[string]string),
-	}
+	return &FzfFrontend{}
 }
 
-func (f *FzfFrontend) StartFromReader(reader io.Reader) error {
+func (f *FzfFrontend) StartFromReader(reader io.Reader, conf *config.Config) error {
 	f.selectionBuffer = bytes.Buffer{}
 
 	keys := []string{"ctrl-t", "ctrl-a", "ctrl-p", "ctrl-n"}
@@ -62,14 +61,10 @@ func (f *FzfFrontend) StartFromReader(reader io.Reader) error {
 		args = append(args, "--bind", action)
 	}
 
-	f.cmd = exec.Command("fzf", args...)
+	f.cmd = exec.Command(conf.FzfPath, args...)
 	f.cmd.Stdin = reader
 	f.cmd.Stdout = &f.selectionBuffer
 	f.cmd.Stderr = os.Stderr
-
-	if f.params == nil {
-		f.params = make(map[string]string)
-	}
 
 	return f.cmd.Start()
 }

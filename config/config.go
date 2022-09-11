@@ -166,7 +166,6 @@ func DefaultConfigPath() (string, error) {
 	configFile := filepath.Join(configPath, "config.json")
 
 	return configFile, nil
-
 }
 
 func LoadConfig() (*Config, error) {

@@ -2,6 +2,10 @@
 
 ## Road map
 
+- [ ] make config human readable
+    - [ ] use a map[string]interface{} instead of []byte for second stage deserialization
+    - [ ] use json.Indent for prettier printing
+- [ ] add an entry in fzf to blacklist applications
 - [X] optional parameters
     - [X] fzf could have an option to only highlight in nautilus (instead of xdg open)
     - [X] fzf could have an option to directly open the parent (although redundant with highlight option)

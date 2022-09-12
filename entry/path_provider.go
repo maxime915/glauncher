@@ -89,7 +89,7 @@ func (p Path) RemoteLaunch(options map[string]string) error {
 			path = filepath.Dir(path)
 		}
 
-		return exec.Command("x-terminal-emulator", "--working-directory", path).Run()
+		return exec.Command("x-terminal-emulator", "--working-directory", path).Start()
 	}
 
 	return ErrKeyNotHandled

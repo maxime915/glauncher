@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/maxime915/glauncher/config"
 	"github.com/maxime915/glauncher/entry"
+	"github.com/maxime915/glauncher/logger"
 	"github.com/maxime915/glauncher/remote"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"
@@ -22,7 +22,6 @@ func getRemote(flag string) (remote.Remote, error) {
 
 	switch flag {
 	case remote.RemoteHTTP:
-		log.Println("providing an HTTP remote")
 		httpConfig, err := remote.GetHTTPConfig(conf)
 		if err != nil {
 			return nil, err
@@ -30,7 +29,6 @@ func getRemote(flag string) (remote.Remote, error) {
 
 		return remote.NewHTTPConnection(httpConfig), nil
 	case remote.RemoteRPC:
-		log.Println("providing an RPC remote")
 		rpcConfig, err := remote.GetRPCConfig(conf)
 		if err != nil {
 			return nil, err
@@ -38,7 +36,6 @@ func getRemote(flag string) (remote.Remote, error) {
 
 		return remote.NewRPCConnection(rpcConfig)
 	case "":
-		log.Println("providing the default remote")
 		return remote.GetRemoteAndConnect(conf, false)
 	default:
 		return nil, remote.ErrInvalidRemote
@@ -259,6 +256,5 @@ func main() {
 		},
 	}
 
-	err := app.Run(os.Args)
-	log.Println("done:", err)
+	logger.FatalIfErr(app.Run(os.Args))
 }

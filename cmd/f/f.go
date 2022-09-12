@@ -26,8 +26,6 @@ func StartF(ctx *cli.Context) error {
 	remote, err := remote.GetRemote(conf)
 	logger.FatalIfErr(err)
 
-	ctx.String("remote")
-
 	// set sensible defaults
 	options := map[string]string{
 		entry.OptionBaseDirectory:       conf.BaseDirectory,
@@ -40,6 +38,7 @@ func StartF(ctx *cli.Context) error {
 		options[flag] = ctx.String(flag)
 	}
 
+	// read args
 	if ctx.NArg() == 1 {
 		baseDirectory, err := filepath.Abs(ctx.Args().First())
 		logger.FatalIfErr(err)

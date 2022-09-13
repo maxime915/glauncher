@@ -26,14 +26,8 @@ func StartF(ctx *cli.Context) error {
 	remote, err := remote.GetRemote(conf)
 	logger.FatalIfErr(err)
 
-	// set sensible defaults
-	options := map[string]string{
-		entry.OptionBaseDirectory:       conf.BaseDirectory,
-		entry.OptionOpenInTerminal:      "false",
-		entry.OptionHighlightInNautilus: "false",
-	}
-
 	// read flags
+	options := map[string]string{}
 	for _, flag := range ctx.FlagNames() {
 		options[flag] = ctx.String(flag)
 	}

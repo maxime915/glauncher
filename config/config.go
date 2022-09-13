@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	utils "github.com/maxime915/glauncher/utils"
-
 	"github.com/kirsle/configdir"
 )
 
@@ -15,11 +13,8 @@ const LogToStderr = "--use-stderr"
 
 type Config struct {
 	// path to executables
-	FdfindPath string `json:"fdfind-path"`
-	FzfPath    string `json:"fzf-path"`
+	FzfPath string `json:"fzf-path"`
 
-	// Where to start fdfind from
-	BaseDirectory string `json:"base-directory"`
 	// path to use for a log file
 	LogFile string `json:"log-file"`
 
@@ -119,21 +114,6 @@ func LoadConfigAt(configFile string) (*Config, error) {
 func (config *Config) validate() (err error) {
 	if len(config.FzfPath) == 0 {
 		config.FzfPath = "fzf"
-	}
-
-	if len(config.FdfindPath) == 0 {
-		config.FdfindPath = "fdfind"
-	}
-
-	if len(config.BaseDirectory) == 0 {
-		config.BaseDirectory, err = utils.ResolvePath("~/")
-		if err != nil {
-			return fmt.Errorf("no home directory found, define the base directory in the config file")
-		}
-	}
-
-	if !filepath.IsAbs(config.BaseDirectory) {
-		return fmt.Errorf("(config) base directory must be an absolute path")
 	}
 
 	// initialize map's

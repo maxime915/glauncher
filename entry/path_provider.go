@@ -9,16 +9,15 @@ import (
 
 	"github.com/maxime915/glauncher/config"
 	"github.com/maxime915/glauncher/frontend"
+	"github.com/maxime915/glauncher/utils"
 )
 
 const (
-	PathProviderKey           = "path-provider"
-	OptionBaseDirectory       = "base-directory"
-	OptionHideFiles           = "hide-files"
-	OptionHideFolders         = "hide-folders"
-	OptionIgnoreVCS           = "no-ignore-vcs"
-	OptionOpenInTerminal      = "open-in-terminal"
-	OptionHighlightInNautilus = "highlight-in-nautilus"
+	PathProviderKey     = "path-provider"
+	OptionBaseDirectory = "base-directory"
+	OptionHideFiles     = "hide-files"
+	OptionHideFolders   = "hide-folders"
+	OptionIgnoreVCS     = "no-ignore-vcs"
 )
 
 var (
@@ -97,38 +96,112 @@ func (p Path) RemoteLaunch(options map[string]string) error {
 
 // provide path on the disk
 type PathProvider struct {
-	fdfindPath    string
-	baseDirectory string
-	noIgnoreVCS   bool
-	hideFiles     bool
-	hideFolders   bool
+	PathProviderSettings
+}
+
+type PathProviderSettings struct {
+	FdfindPath    string `json:"fdfind-path"`
+	BaseDirectory string `json:"base-directory"`
+	NoIgnoreVCS   bool   `json:"no-ignore-vcs"`
+	HideFiles     bool   `json:"hide-files"`
+	HideFolders   bool   `json:"hide-folders"`
+}
+
+func defaultPathProviderSettings() PathProviderSettings {
+	return PathProviderSettings{
+		FdfindPath:  "fdfind",
+		NoIgnoreVCS: true,
+		HideFiles:   false,
+		HideFolders: false,
+	}
+}
+
+func (p *PathProviderSettings) validate() (err error) {
+
+	if p.FdfindPath == "" {
+		p.FdfindPath = defaultPathProviderSettings().FdfindPath
+	}
+
+	if p.BaseDirectory == "" {
+		p.BaseDirectory, err = utils.ResolvePath("~/")
+		if err != nil {
+			return fmt.Errorf("could not resolve base directory: %w", err)
+		}
+	}
+
+	if !filepath.IsAbs(p.BaseDirectory) {
+		return fmt.Errorf("base directory must be an absolute path")
+	}
+
+	return nil
+}
+
+func SetPathProviderSettings(conf *config.Config, settings PathProviderSettings) error {
+	// get current settings
+	currentSettings, err := utils.ValFromJSON[PathProviderSettings](conf.Providers[PathProviderKey])
+	if err != nil {
+		return err
+	}
+
+	// update settings
+	currentSettings.FdfindPath = settings.FdfindPath
+	currentSettings.BaseDirectory = settings.BaseDirectory
+	currentSettings.NoIgnoreVCS = settings.NoIgnoreVCS
+	currentSettings.HideFiles = settings.HideFiles
+	currentSettings.HideFolders = settings.HideFolders
+
+	currentSettings.validate()
+
+	// save settings
+	conf.Providers[PathProviderKey], err = utils.ValToJSON(currentSettings)
+	if err != nil {
+		return err
+	}
+
+	return conf.Save()
 }
 
 func NewPathProvider(conf *config.Config, options map[string]string) (EntryProvider, error) {
-	provider := PathProvider{
-		fdfindPath:  conf.FdfindPath,
-		noIgnoreVCS: true,
+
+	// get current settings
+	var settings PathProviderSettings
+	settingsMap := conf.Providers[PathProviderKey]
+	if len(settingsMap) == 0 {
+		settings = defaultPathProviderSettings()
+		err := SetPathProviderSettings(conf, settings)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := utils.FromJSON(settingsMap, &settings)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	var ok bool
-	provider.baseDirectory, ok = options[OptionBaseDirectory]
-	if !ok {
-		provider.baseDirectory = conf.BaseDirectory
+	provider := PathProvider{settings}
+
+	if baseDirectory, ok := options[OptionBaseDirectory]; ok {
+		provider.BaseDirectory = baseDirectory
 	}
 
 	if options[OptionIgnoreVCS] == "true" {
-		provider.noIgnoreVCS = false
+		provider.NoIgnoreVCS = false
 	}
 
 	if options[OptionHideFiles] == "true" {
-		provider.hideFiles = true
+		provider.HideFiles = true
 	}
 
 	if options[OptionHideFolders] == "true" {
-		provider.hideFolders = true
+		provider.HideFolders = true
 	}
 
-	if provider.hideFiles && provider.hideFolders {
+	if err := provider.validate(); err != nil {
+		return nil, err
+	}
+
+	if provider.HideFiles && provider.HideFolders {
 		return nil, fmt.Errorf("cannot hide both files and folders")
 	}
 
@@ -138,18 +211,18 @@ func NewPathProvider(conf *config.Config, options map[string]string) (EntryProvi
 func (p PathProvider) GetEntryReader() (io.Reader, error) {
 	r, w := io.Pipe()
 
-	args := []string{"--base-directory", p.baseDirectory, "--relative-path", "--strip-cwd-prefix"}
-	if p.noIgnoreVCS {
+	args := []string{"--base-directory", p.BaseDirectory, "--relative-path", "--strip-cwd-prefix"}
+	if p.NoIgnoreVCS {
 		args = append(args, "--no-ignore-vcs")
 	}
-	if p.hideFiles {
+	if p.HideFiles {
 		args = append(args, "--type", "d")
 	}
-	if p.hideFolders {
+	if p.HideFolders {
 		args = append(args, "--type", "f")
 	}
 
-	fdfind := exec.Command(p.fdfindPath, args...)
+	fdfind := exec.Command(p.FdfindPath, args...)
 	fdfind.Stdout = w
 
 	err := fdfind.Start()
@@ -168,7 +241,7 @@ func (p PathProvider) GetEntryReader() (io.Reader, error) {
 
 func (p PathProvider) Fetch(entry string) (Entry, bool) {
 	// Join base directory with entry
-	path := filepath.Join(p.baseDirectory, entry)
+	path := filepath.Join(p.BaseDirectory, entry)
 	// Only accept if file exists and there are no errors
 	if _, err := os.Stat(path); err == nil {
 		return Path(path), true

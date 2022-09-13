@@ -2,7 +2,6 @@ package remote
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/maxime915/glauncher/config"
 	"github.com/maxime915/glauncher/entry"
+	"github.com/maxime915/glauncher/utils"
 )
 
 const (
@@ -53,21 +53,22 @@ type HTTPConfig struct {
 
 func GetHTTPConfig(conf *config.Config) (HTTPConfig, error) {
 	serialized := conf.Remotes[RemoteHTTP]
+	var err error
 
 	if len(serialized) == 0 {
 		config := defaultHTTPConfig()
-		body, err := json.Marshal(config)
+		serialized, err = utils.ValToJSON(config)
 		if err != nil {
 			return HTTPConfig{}, err
 		}
 
-		conf.Remotes[RemoteRPC] = string(body)
+		conf.Remotes[RemoteRPC] = serialized
 		err = conf.Save()
 		return config, err
 	}
 
 	var config HTTPConfig
-	err := json.Unmarshal([]byte(serialized), &config)
+	err = utils.FromJSON(serialized, &config)
 	if err != nil {
 		return HTTPConfig{}, err
 	}

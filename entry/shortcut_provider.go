@@ -1,7 +1,6 @@
 package entry
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -9,6 +8,7 @@ import (
 
 	config "github.com/maxime915/glauncher/config"
 	"github.com/maxime915/glauncher/frontend"
+	"github.com/maxime915/glauncher/utils"
 )
 
 const ShortCutProviderKey = "shortcuts"
@@ -54,14 +54,11 @@ func defaultShortcutList() (shortcutList, error) {
 
 func AddShortcutsToConfig(conf *config.Config, shortcuts map[string]ShortCut, override bool) error {
 	// get current commands
-	var currentShortcuts shortcutList
-	shortcutStr := conf.Providers[ShortCutProviderKey]
-	if len(shortcutStr) != 0 {
-		err := json.Unmarshal([]byte(shortcutStr), &currentShortcuts)
-		if err != nil {
-			return nil
-		}
+	currentShortcuts, err := utils.ValFromJSON[shortcutList](conf.Providers[ShortCutProviderKey])
+	if err != nil {
+		return nil
 	}
+
 	if currentShortcuts == nil {
 		currentShortcuts = make(shortcutList, len(shortcuts))
 	}
@@ -87,12 +84,12 @@ func AddShortcutsToConfig(conf *config.Config, shortcuts map[string]ShortCut, ov
 	}
 
 	// save shortcuts
-	shortcutsSerialized, err := json.Marshal(currentShortcuts)
+	shortcutsSerialized, err := utils.ValToJSON(currentShortcuts)
 	if err != nil {
 		return err
 	}
 
-	conf.Providers[ShortCutProviderKey] = string(shortcutsSerialized)
+	conf.Providers[ShortCutProviderKey] = shortcutsSerialized
 	return conf.Save()
 }
 
@@ -108,18 +105,12 @@ func NewShortcutProvider(conf *config.Config, options map[string]string) (EntryP
 		if err != nil {
 			return nil, err
 		}
-
-		shortcutsBytes, err := json.Marshal(shortcuts)
+		err = AddShortcutsToConfig(conf, shortcuts, false)
 		if err != nil {
 			return nil, err
 		}
-
-		conf.Providers[ShortCutProviderKey] = string(shortcutsBytes)
-		if err = conf.Save(); err != nil {
-			return nil, err
-		}
 	} else {
-		err = json.Unmarshal([]byte(shortcutsStr), &shortcuts)
+		err = utils.FromJSON(shortcutsStr, &shortcuts)
 		if err != nil {
 			return nil, err
 		}

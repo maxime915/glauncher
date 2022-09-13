@@ -7,6 +7,7 @@ import (
 
 	config "github.com/maxime915/glauncher/config"
 	"github.com/maxime915/glauncher/frontend"
+	"github.com/maxime915/glauncher/utils"
 )
 
 const ApplicationProviderKey = "application-provider"
@@ -61,13 +62,9 @@ func SetApplicationConfig(
 ) error {
 
 	// get current settings
-	var currentSettings applicationProviderSettings
-	settingsStr := conf.Providers[ApplicationProviderKey]
-	if len(settingsStr) != 0 {
-		err := json.Unmarshal([]byte(settingsStr), &currentSettings)
-		if err != nil {
-			return err
-		}
+	currentSettings, err := utils.ValFromJSON[applicationProviderSettings](conf.Providers[ApplicationProviderKey])
+	if err != nil {
+		return err
 	}
 
 	// update settings
@@ -76,33 +73,28 @@ func SetApplicationConfig(
 	currentSettings.ExtraApplication = extraApplication
 
 	// save settings
-	settingsSerialized, err := json.Marshal(currentSettings)
+	settingsSerialized, err := utils.ValToJSON(currentSettings)
 	if err != nil {
 		return err
 	}
 
-	conf.Providers[ApplicationProviderKey] = string(settingsSerialized)
+	conf.Providers[ApplicationProviderKey] = settingsSerialized
 	return conf.Save()
 }
 
 func NewApplicationProvider(conf *config.Config, options map[string]string) (EntryProvider, error) {
 	// parse settings
 	var settings applicationProviderSettings
-	settingsStr := conf.Providers[ApplicationProviderKey]
-	if len(settingsStr) == 0 {
+	settingsMap := conf.Providers[ApplicationProviderKey]
+	if len(settingsMap) == 0 {
 		// get the defaults and store them
 		settings = defaultApplicationSettings()
-		settingsStr, err := json.Marshal(settings)
+		err := SetApplicationConfig(conf, settings.PythonPath, settings.Blacklist, settings.ExtraApplication)
 		if err != nil {
 			return nil, err
 		}
-
-		conf.Providers[ApplicationProviderKey] = string(settingsStr)
-		if err := conf.Save(); err != nil {
-			return nil, err
-		}
 	} else {
-		err := json.Unmarshal([]byte(settingsStr), &settings)
+		err := utils.FromJSON(settingsMap, &settings)
 		if err != nil {
 			return nil, err
 		}

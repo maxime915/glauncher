@@ -2,7 +2,6 @@ package entry
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +12,7 @@ import (
 
 	config "github.com/maxime915/glauncher/config"
 	"github.com/maxime915/glauncher/frontend"
+	"github.com/maxime915/glauncher/utils"
 )
 
 const CommandProviderKey = "commands"
@@ -83,14 +83,11 @@ func defaultCommandList() commandList {
 
 func AddCommandsToConfig(conf *config.Config, commands map[string]Command, override bool) error {
 	// get current commands
-	var currentCommands commandList
-	commandsStr := conf.Providers[CommandProviderKey]
-	if len(commandsStr) != 0 {
-		err := json.Unmarshal([]byte(commandsStr), &currentCommands)
-		if err != nil {
-			return nil
-		}
+	currentCommands, err := utils.ValFromJSON[commandList](conf.Providers[CommandProviderKey])
+	if err != nil {
+		return nil
 	}
+
 	if currentCommands == nil {
 		currentCommands = make(commandList, len(commands))
 	}
@@ -116,32 +113,28 @@ func AddCommandsToConfig(conf *config.Config, commands map[string]Command, overr
 	}
 
 	// save commands
-	commandsSerialized, err := json.Marshal(currentCommands)
+	commandsSerialized, err := utils.ValToJSON(currentCommands)
 	if err != nil {
 		return err
 	}
-	conf.Providers[CommandProviderKey] = string(commandsSerialized)
+
+	conf.Providers[CommandProviderKey] = commandsSerialized
 	return conf.Save()
 }
 
 func NewCommandProvider(conf *config.Config, options map[string]string) (EntryProvider, error) {
 	// parse commands
 	var commands commandList
-	commandsStr := conf.Providers[CommandProviderKey]
-	if len(commandsStr) == 0 {
+	commandsMap := conf.Providers[CommandProviderKey]
+	if len(commandsMap) == 0 {
 		// get the defaults, and store them
 		commands = defaultCommandList()
-		commandsStr, err := json.Marshal(commands)
+		err := AddCommandsToConfig(conf, commands, false)
 		if err != nil {
 			return nil, err
 		}
-
-		conf.Providers[CommandProviderKey] = string(commandsStr)
-		if err := conf.Save(); err != nil {
-			return nil, err
-		}
 	} else {
-		err := json.Unmarshal([]byte(commandsStr), &commands)
+		err := utils.FromJSON(commandsMap, &commands)
 		if err != nil {
 			return nil, err
 		}

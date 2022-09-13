@@ -27,15 +27,15 @@ type Config struct {
 
 	// Name of the remote to use
 	Selected string `json:"selected-remote"`
-	// JSON encoded config for all defined remote
-	Remotes map[string]string `json:"remotes-configs"`
+	// configs for all defined remote
+	Remotes map[string]map[string]any `json:"remotes-configs"`
 
 	/// Provider configuration
 
 	// Providers in the blacklist will not be used
 	Blacklist []string `json:"blacklist"`
-	// JSON encoded config for each provider
-	Providers map[string]string `json:"providers-config"`
+	// configs for all defined provider
+	Providers map[string]map[string]any `json:"providers-config"`
 
 	ConfigFile string
 }
@@ -90,6 +90,8 @@ func (c *Config) Save() error {
 
 	// write to the temporary file
 	encoder := json.NewEncoder(tempFile)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
 	err = encoder.Encode(c)
 	if err != nil {
 		return err
@@ -137,21 +139,12 @@ func (config *Config) validate() (err error) {
 	// initialize map's
 
 	if config.Remotes == nil {
-		config.Remotes = make(map[string]string)
+		config.Remotes = make(map[string]map[string]any)
 	}
 
 	if config.Providers == nil {
-		config.Providers = make(map[string]string)
+		config.Providers = make(map[string]map[string]any)
 	}
-
-	// nil slice's are fine
-
-	// // make all forced files absolute paths
-	// for i, file := range config.ForcedFiles {
-	// 	if !filepath.IsAbs(file) {
-	// 		config.ForcedFiles[i] = filepath.Join(config.BaseDirectory, file)
-	// 	}
-	// }
 
 	return nil
 }

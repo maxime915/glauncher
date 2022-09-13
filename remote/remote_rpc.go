@@ -1,7 +1,6 @@
 package remote
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/rpc"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/maxime915/glauncher/config"
 	"github.com/maxime915/glauncher/entry"
+	"github.com/maxime915/glauncher/utils"
 )
 
 const (
@@ -30,21 +30,22 @@ type RPCConfig struct {
 
 func GetRPCConfig(conf *config.Config) (RPCConfig, error) {
 	serialized := conf.Remotes[RemoteRPC]
+	var err error
 
 	if len(serialized) == 0 {
 		config := defaultRPCConfig()
-		body, err := json.Marshal(config)
+		serialized, err = utils.ValToJSON(config)
 		if err != nil {
 			return RPCConfig{}, err
 		}
 
-		conf.Remotes[RemoteRPC] = string(body)
+		conf.Remotes[RemoteRPC] = serialized
 		err = conf.Save()
 		return config, err
 	}
 
 	var config RPCConfig
-	err := json.Unmarshal([]byte(serialized), &config)
+	err = utils.FromJSON(serialized, &config)
 	if err != nil {
 		return RPCConfig{}, err
 	}

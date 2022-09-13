@@ -42,8 +42,8 @@ type ApplicationProvider = MapProvider[Application]
 
 type applicationProviderSettings struct {
 	PythonPath       string            `json:"python-path"`
-	Blacklist        []string          `json:"id-black-list"`
-	ExtraApplication map[string]string `json:"extra-app"`
+	Blacklist        []string          `json:"application-id-blacklist"`
+	ExtraApplication map[string]string `json:"application-extra"`
 }
 
 func defaultApplicationSettings() applicationProviderSettings {
@@ -139,6 +139,6 @@ func NewApplicationProvider(conf *config.Config, options map[string]string) (Ent
 
 	return ApplicationProvider{
 		Content: content,
-		Prefix:  "🚀 ",
+		Prefix:  "@ ",
 	}, nil
 }

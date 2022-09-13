@@ -28,11 +28,12 @@ type Config struct {
 	/// Provider configuration
 
 	// Providers in the blacklist will not be used
-	Blacklist []string `json:"blacklist"`
+	Blacklist []string `json:"providers-blacklist"`
 	// configs for all defined provider
 	Providers map[string]map[string]any `json:"providers-config"`
 
-	ConfigFile string
+	// path to the config file: not saved
+	ConfigFile string `json:"-"`
 }
 
 func defaultConfig() *Config {
@@ -63,11 +64,11 @@ func readConfigAt(configFile string) (*Config, error) {
 		}
 		defer fh.Close()
 
-		var config *Config
+		var config Config
 		decoder := json.NewDecoder(fh)
 		err = decoder.Decode(&config)
 		config.ConfigFile = configFile
-		return config, err
+		return &config, err
 	}
 }
 

@@ -15,7 +15,7 @@ import (
 	"github.com/maxime915/glauncher/utils"
 )
 
-const CommandProviderKey = "commands"
+const CommandProviderKey = "command-provider"
 
 var ErrUnableToRemoteLaunchCommand = errors.New("unable to RemoteLaunch() this command")
 
@@ -73,12 +73,7 @@ type CommandProvider = MapProvider[Command]
 type commandList = map[string]Command
 
 func defaultCommandList() commandList {
-	return map[string]Command{"<ping": {
-		Name:           "/usr/bin/ping",
-		Args:           []string{"-i", "0.2", "1.1", "-c", "5"},
-		SecondDelay:    5,
-		CloseOnFailure: true,
-	}}
+	return map[string]Command{}
 }
 
 func AddCommandsToConfig(conf *config.Config, commands map[string]Command, override bool) error {
@@ -142,6 +137,6 @@ func NewCommandProvider(conf *config.Config, options map[string]string) (EntryPr
 
 	return CommandProvider{
 		Content: commands,
-		Prefix:  "🧑‍🔧 ",
+		Prefix:  "< ",
 	}, nil
 }

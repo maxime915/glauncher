@@ -5,19 +5,41 @@ import (
 	"fmt"
 	"net/url"
 	"os/exec"
+	"strings"
 
 	config "github.com/maxime915/glauncher/config"
 	"github.com/maxime915/glauncher/frontend"
 	"github.com/maxime915/glauncher/utils"
 )
 
-const ShortCutProviderKey = "shortcuts"
+const ShortCutProviderKey = "shortcut-provider"
 
 var (
 	ErrInvalidScheme = errors.New("forbidden scheme in URL")
 	// Empty scheme relates to files
 	allowedScheme = []string{"", "http", "https", "file"}
 )
+
+func validateURL(path string) error {
+	url, err := url.ParseRequestURI(string(path))
+	if err != nil {
+		return err
+	}
+
+	isAllowed := false
+	for _, scheme := range allowedScheme {
+		if scheme == url.Scheme {
+			isAllowed = true
+			break
+		}
+	}
+
+	if !isAllowed {
+		return ErrInvalidScheme
+	}
+
+	return nil
+}
 
 // either an URI or an absolute path
 type ShortCut string
@@ -75,6 +97,20 @@ func AddShortcutsToConfig(conf *config.Config, shortcuts map[string]ShortCut, ov
 
 	// merge shortcuts
 	for k, v := range shortcuts {
+
+		if strings.HasPrefix(string(v), "~/") {
+			path, err := utils.ResolvePath(string(v))
+			if err != nil {
+				return err
+			}
+			v = ShortCut(path)
+		}
+
+		err := validateURL(string(v))
+		if err != nil {
+			return err
+		}
+
 		currentShortcuts[k] = v
 	}
 
@@ -114,25 +150,14 @@ func NewShortcutProvider(conf *config.Config, options map[string]string) (EntryP
 	}
 
 	for _, path := range shortcuts {
-		// accepts http URI and absolute files
-		url, err := url.ParseRequestURI(string(path))
+		err = validateURL(string(path))
 		if err != nil {
 			return nil, err
-		}
-		isAllowed := false
-		for _, scheme := range allowedScheme {
-			if scheme == url.Scheme {
-				isAllowed = true
-				break
-			}
-		}
-		if !isAllowed {
-			return nil, ErrInvalidScheme
 		}
 	}
 
 	return ShortCutProvider{
 		Content: shortcuts,
-		Prefix:  "🔗 ",
+		Prefix:  "& ",
 	}, nil
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/maxime915/glauncher/frontend"
 )
 
-const DesktopFileProviderKey = "desktopFileProvider"
+const DesktopFileProviderKey = "desktopFile-provider"
 
 type DesktopFile string
 
@@ -77,6 +77,6 @@ func NewDesktopFileProvider(conf *config.Config, options map[string]string) (Ent
 
 	return DesktopFileProvider{
 		Content: desktopFiles,
-		Prefix:  "🚀 ",
+		Prefix:  "# ",
 	}, nil
 }

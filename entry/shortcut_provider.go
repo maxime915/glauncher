@@ -43,13 +43,8 @@ type ShortCutProvider = MapProvider[ShortCut]
 // struct to store the commands in the config files
 type shortcutList = map[string]ShortCut
 
-func defaultShortcutList() (shortcutList, error) {
-	configFile, err := config.DefaultConfigPath()
-	if err != nil {
-		return shortcutList{}, err
-	}
-
-	return map[string]ShortCut{"config": ShortCut(configFile)}, nil
+func defaultShortcutList() shortcutList {
+	return map[string]ShortCut{}
 }
 
 func AddShortcutsToConfig(conf *config.Config, shortcuts map[string]ShortCut, override bool) error {
@@ -101,10 +96,7 @@ func NewShortcutProvider(conf *config.Config, options map[string]string) (EntryP
 	shortcutsStr := conf.Providers[ShortCutProviderKey]
 	if len(shortcutsStr) == 0 {
 		// get the defaults, and store them
-		shortcuts, err = defaultShortcutList()
-		if err != nil {
-			return nil, err
-		}
+		shortcuts = defaultShortcutList()
 		err = AddShortcutsToConfig(conf, shortcuts, false)
 		if err != nil {
 			return nil, err
@@ -114,6 +106,11 @@ func NewShortcutProvider(conf *config.Config, options map[string]string) (EntryP
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// add config (if not already present)
+	if _, ok := shortcuts["config"]; !ok {
+		shortcuts["config"] = ShortCut(conf.ConfigFile)
 	}
 
 	for _, path := range shortcuts {

@@ -14,12 +14,30 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func getRemote(flag string) (remote.Remote, error) {
-	conf, err := config.LoadConfig()
+var (
+	log  logger.Logger
+	conf *config.Config
+)
+
+func init() {
+	var err error
+	conf, err = config.LoadConfig()
 	if err != nil {
-		return nil, err
+		logger.LoggerToStderr().Fatal(err)
 	}
 
+	if conf.LogFile == config.LogToStderr {
+		log = logger.LoggerToStderr()
+	} else {
+		log, err = logger.LoggerToFile(conf.LogFile, false)
+
+		if err != nil {
+			logger.LoggerToStderr().Fatal(err)
+		}
+	}
+}
+
+func getRemote(flag string) (remote.Remote, error) {
 	switch flag {
 	case remote.RemoteHTTP:
 		httpConfig, err := remote.GetHTTPConfig(conf)
@@ -49,9 +67,7 @@ func KillRemote(ctx *cli.Context) error {
 	}
 
 	remote, err := getRemote(ctx.String("remote"))
-	if err != nil {
-		return err
-	}
+	log.FatalIfErr(err)
 
 	return remote.Close()
 }
@@ -63,9 +79,7 @@ func StartRemote(cliCtx *cli.Context) error {
 	}
 
 	remote, err := getRemote(cliCtx.String("remote"))
-	if err != nil {
-		return err
-	}
+	log.FatalIfErr(err)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	interrupted := true
@@ -95,12 +109,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 		return cli.Exit("too many arguments", 1)
 	}
 
-	conf, err := config.LoadConfig()
-	if err != nil {
-		return err
-	}
-
-	err = entry.AddShortcutsToConfig(conf, map[string]entry.ShortCut{
+	err := entry.AddShortcutsToConfig(conf, map[string]entry.ShortCut{
 		"notion":      "https://www.notion.so/",
 		"overleaf":    "https://www.overleaf.com/project",
 		"slides":      "https://docs.google.com/presentation/u/0/",
@@ -120,9 +129,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 		"oamg":        "https://oa.mg",
 		"apple-music": "https://music.apple.com/be/browse",
 	}, false)
-	if err != nil {
-		return err
-	}
+	log.FatalIfErr(err)
 
 	err = entry.AddCommandsToConfig(conf, map[string]entry.Command{
 		"<open-notebook": {
@@ -199,9 +206,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 			CloseOnFailure: false,
 		},
 	}, false)
-	if err != nil {
-		return err
-	}
+	log.FatalIfErr(err)
 
 	err = entry.SetApplicationConfig(
 		conf,
@@ -209,9 +214,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 		nil,
 		nil,
 	)
-	if err != nil {
-		return err
-	}
+	log.FatalIfErr(err)
 
 	return nil
 }
@@ -254,5 +257,5 @@ func main() {
 		},
 	}
 
-	logger.FatalIfErr(app.Run(os.Args))
+	log.FatalIfErr(app.Run(os.Args))
 }

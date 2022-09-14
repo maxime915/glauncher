@@ -13,6 +13,29 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var (
+	log  logger.Logger
+	conf *config.Config
+)
+
+func init() {
+	var err error
+	conf, err = config.LoadConfig()
+	if err != nil {
+		logger.LoggerToStderr().Fatal(err)
+	}
+
+	if conf.LogFile == config.LogToStderr {
+		log = logger.LoggerToStderr()
+	} else {
+		log, err = logger.LoggerToFile(conf.LogFile, false)
+
+		if err != nil {
+			logger.LoggerToStderr().Fatal(err)
+		}
+	}
+}
+
 func StartF(ctx *cli.Context) error {
 	if ctx.NArg() > 1 {
 		return cli.Exit("f takes at most 1 argument", 1)
@@ -20,11 +43,11 @@ func StartF(ctx *cli.Context) error {
 
 	// load the config for the util to work
 	conf, err := config.LoadConfig()
-	logger.FatalIfErr(err)
+	log.FatalIfErr(err)
 
 	// get the entry handler while fzf is working
 	remote, err := remote.GetRemote(conf)
-	logger.FatalIfErr(err)
+	log.FatalIfErr(err)
 
 	// read flags
 	options := map[string]string{}
@@ -35,7 +58,7 @@ func StartF(ctx *cli.Context) error {
 	// read args
 	if ctx.NArg() == 1 {
 		baseDirectory, err := filepath.Abs(ctx.Args().First())
-		logger.FatalIfErr(err)
+		log.FatalIfErr(err)
 		options[entry.OptionBaseDirectory] = baseDirectory
 	}
 
@@ -53,7 +76,7 @@ func StartF(ctx *cli.Context) error {
 		}
 
 		provider, err := newProviderFun(conf, options)
-		logger.FatalIfErr(err)
+		log.FatalIfErr(err)
 		providers = append(providers, provider)
 	}
 
@@ -61,7 +84,7 @@ func StartF(ctx *cli.Context) error {
 	var readerList []io.Reader
 	for _, provider := range providers {
 		reader, err := provider.GetEntryReader()
-		logger.FatalIfErr(err)
+		log.FatalIfErr(err)
 
 		readerList = append(readerList, reader)
 	}
@@ -69,13 +92,13 @@ func StartF(ctx *cli.Context) error {
 
 	fzf := frontend.NewFzfFrontend()
 	err = fzf.StartFromReader(reader, conf)
-	logger.FatalIfErr(err)
+	log.FatalIfErr(err)
 
 	selected, newOptions, err := fzf.GetSelection()
 	if err == frontend.ErrNoEntrySelected {
 		return nil
 	}
-	logger.FatalIfErr(err)
+	log.FatalIfErr(err)
 
 	// add options set by fzf
 	for key, val := range newOptions {
@@ -102,7 +125,7 @@ func StartF(ctx *cli.Context) error {
 			err = remote.HandleEntry(e, options)
 		}
 
-		logger.FatalIfErr(err)
+		log.FatalIfErr(err)
 
 		break
 	}
@@ -127,5 +150,6 @@ func main() {
 		Action: StartF,
 	}
 
-	app.Run(os.Args)
+	// StartF never returns an error so this is useless
+	log.FatalIfErr(app.Run(os.Args))
 }

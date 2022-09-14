@@ -1,75 +1,81 @@
 package logger
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 
-	config "github.com/maxime915/glauncher/config"
 	utils "github.com/maxime915/glauncher/utils"
 )
 
-var logger *log.Logger
+var (
+	ErrDefaultLoggerUnavailable = errors.New("unable to open the default logger")
+	ErrRelativePath             = errors.New("path must be absolute")
+)
 
 const DefaultLogFile = "~/.log/glauncher.log"
 
-func init() {
-	conf, err := config.LoadConfig()
+type Logger struct {
+	*log.Logger
+}
+
+func (l Logger) FatalIfErr(err error) {
 	if err != nil {
-		log.Fatal("unable to load config: ", err)
+		l.Fatal(err.Error())
 	}
+}
 
-	logFile := conf.LogFile
+func LogFile(path string) (io.Writer, error) {
+	err := error(nil)
 
-	if len(logFile) == 0 {
-		logFile, err = utils.ResolvePath(DefaultLogFile)
+	if len(path) == 0 {
+		path, err = utils.ResolvePath(DefaultLogFile)
 		if err != nil {
-			// use the default logger
-			logger = log.Default()
-			return
+			return nil, ErrDefaultLoggerUnavailable
 		}
 	}
 
-	if logFile == config.LogToStderr {
-		logger = log.Default()
-		return
-	}
-
 	// expected to be a path to a file
-	if !filepath.IsAbs(logFile) {
-		log.Fatal("log file must be absolute")
+	if !filepath.IsAbs(path) {
+		return nil, ErrRelativePath
 	}
 
 	// create directory
-	dir := filepath.Dir(logFile)
+	dir := filepath.Dir(path)
 	err = os.MkdirAll(dir, os.FileMode(0755))
 	if err != nil {
-		log.Fatalf("unable to make directory to save log: %s", err.Error())
+		return nil, fmt.Errorf("unable to make directory for log file: %w", err)
 	}
 
 	// create file
-	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Fatal("error opening log file: ", err)
+		return nil, fmt.Errorf("unable to open log file: %w", err)
 	}
 
-	logger = log.New(f, "ERROR in glauncher:", log.Ldate|log.Ltime|log.Lshortfile)
+	return f, nil
 }
 
-func FatalIfErr(err error) {
+func LoggerTo(writers ...io.Writer) Logger {
+	writer := io.MultiWriter(writers...)
+	return Logger{log.New(writer, "ERROR (glauncher):", log.Ldate|log.Ltime|log.Lshortfile)}
+}
+
+func LoggerToFile(path string, addStderr bool) (Logger, error) {
+	writer, err := LogFile(path)
 	if err != nil {
-		Fatal(err.Error())
+		return Logger{}, err
 	}
+
+	if addStderr {
+		return LoggerTo(writer, os.Stderr), nil
+	}
+	return LoggerTo(writer), nil
 }
 
-func Fatal(v ...any) {
-	logger.Fatal(v...)
-}
-
-func Fatalf(format string, v ...any) {
-	logger.Fatalf(format, v...)
-}
-
-func Print(v ...any) {
-	logger.Print(v...)
+func LoggerToStderr() Logger {
+	return LoggerTo(os.Stderr)
 }

@@ -63,21 +63,24 @@ func (s ShortCut) RemoteLaunch(options map[string]string) error {
 type ShortCutProvider = MapProvider[ShortCut]
 
 // struct to store the commands in the config files
-type shortcutList = map[string]ShortCut
+type shortcutSettings struct {
+	ShortcutList map[string]ShortCut `json:"shortcuts-list"`
+	Prefix       string              `json:"prefix"`
+}
 
-func defaultShortcutList() shortcutList {
-	return map[string]ShortCut{}
+func defaultShortcutList() shortcutSettings {
+	return shortcutSettings{map[string]ShortCut{}, "& "}
 }
 
 func AddShortcutsToConfig(conf *config.Config, shortcuts map[string]ShortCut, override bool) error {
 	// get current commands
-	currentShortcuts, err := utils.ValFromJSON[shortcutList](conf.Providers[ShortCutProviderKey])
+	currentShortcuts, err := utils.ValFromJSON[shortcutSettings](conf.Providers[ShortCutProviderKey])
 	if err != nil {
 		return nil
 	}
 
-	if currentShortcuts == nil {
-		currentShortcuts = make(shortcutList, len(shortcuts))
+	if currentShortcuts.ShortcutList == nil {
+		currentShortcuts.ShortcutList = make(map[string]ShortCut, len(shortcuts))
 	}
 
 	// check for overriding
@@ -85,7 +88,7 @@ func AddShortcutsToConfig(conf *config.Config, shortcuts map[string]ShortCut, ov
 		var duplicates []string
 		// check for duplicates
 		for k := range shortcuts {
-			if _, ok := currentShortcuts[k]; ok {
+			if _, ok := currentShortcuts.ShortcutList[k]; ok {
 				duplicates = append(duplicates, k)
 			}
 		}
@@ -111,7 +114,7 @@ func AddShortcutsToConfig(conf *config.Config, shortcuts map[string]ShortCut, ov
 			return err
 		}
 
-		currentShortcuts[k] = v
+		currentShortcuts.ShortcutList[k] = v
 	}
 
 	// save shortcuts
@@ -128,12 +131,12 @@ func NewShortcutProvider(conf *config.Config, options map[string]string) (EntryP
 	var err error
 
 	// parse shortcuts
-	var shortcuts shortcutList
+	var shortcuts shortcutSettings
 	shortcutsStr := conf.Providers[ShortCutProviderKey]
 	if len(shortcutsStr) == 0 {
 		// get the defaults, and store them
 		shortcuts = defaultShortcutList()
-		err = AddShortcutsToConfig(conf, shortcuts, false)
+		err = AddShortcutsToConfig(conf, shortcuts.ShortcutList, false)
 		if err != nil {
 			return nil, err
 		}
@@ -145,11 +148,11 @@ func NewShortcutProvider(conf *config.Config, options map[string]string) (EntryP
 	}
 
 	// add config (if not already present)
-	if _, ok := shortcuts["config"]; !ok {
-		shortcuts["config"] = ShortCut(conf.ConfigFile)
+	if _, ok := shortcuts.ShortcutList["config"]; !ok {
+		shortcuts.ShortcutList["config"] = ShortCut(conf.ConfigFile)
 	}
 
-	for _, path := range shortcuts {
+	for _, path := range shortcuts.ShortcutList {
 		err = validateURL(string(path))
 		if err != nil {
 			return nil, err
@@ -157,7 +160,7 @@ func NewShortcutProvider(conf *config.Config, options map[string]string) (EntryP
 	}
 
 	return ShortCutProvider{
-		Content: shortcuts,
-		Prefix:  "& ",
+		Content: shortcuts.ShortcutList,
+		Prefix:  shortcuts.Prefix,
 	}, nil
 }

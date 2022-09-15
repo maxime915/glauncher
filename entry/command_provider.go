@@ -70,21 +70,24 @@ func (c Command) RemoteLaunch(options map[string]string) error {
 type CommandProvider = MapProvider[Command]
 
 // struct to store the commands in the config files
-type commandList = map[string]Command
+type commandSettings struct {
+	CommandList map[string]Command `json:"commands-list"`
+	Prefix      string             `json:"prefix"`
+}
 
-func defaultCommandList() commandList {
-	return map[string]Command{}
+func defaultCommandList() commandSettings {
+	return commandSettings{map[string]Command{}, "< "}
 }
 
 func AddCommandsToConfig(conf *config.Config, commands map[string]Command, override bool) error {
 	// get current commands
-	currentCommands, err := utils.ValFromJSON[commandList](conf.Providers[CommandProviderKey])
+	currentCommands, err := utils.ValFromJSON[commandSettings](conf.Providers[CommandProviderKey])
 	if err != nil {
 		return nil
 	}
 
-	if currentCommands == nil {
-		currentCommands = make(commandList, len(commands))
+	if currentCommands.CommandList == nil {
+		currentCommands.CommandList = make(map[string]Command, len(commands))
 	}
 
 	// check for overriding
@@ -92,7 +95,7 @@ func AddCommandsToConfig(conf *config.Config, commands map[string]Command, overr
 		var duplicates []string
 		// check for duplicates
 		for k := range commands {
-			if _, ok := currentCommands[k]; ok {
+			if _, ok := currentCommands.CommandList[k]; ok {
 				duplicates = append(duplicates, k)
 			}
 		}
@@ -104,7 +107,7 @@ func AddCommandsToConfig(conf *config.Config, commands map[string]Command, overr
 
 	// merge commands
 	for k, v := range commands {
-		currentCommands[k] = v
+		currentCommands.CommandList[k] = v
 	}
 
 	// save commands
@@ -119,12 +122,12 @@ func AddCommandsToConfig(conf *config.Config, commands map[string]Command, overr
 
 func NewCommandProvider(conf *config.Config, options map[string]string) (EntryProvider, error) {
 	// parse commands
-	var commands commandList
+	var commands commandSettings
 	commandsMap := conf.Providers[CommandProviderKey]
 	if len(commandsMap) == 0 {
 		// get the defaults, and store them
 		commands = defaultCommandList()
-		err := AddCommandsToConfig(conf, commands, false)
+		err := AddCommandsToConfig(conf, commands.CommandList, false)
 		if err != nil {
 			return nil, err
 		}
@@ -136,7 +139,7 @@ func NewCommandProvider(conf *config.Config, options map[string]string) (EntryPr
 	}
 
 	return CommandProvider{
-		Content: commands,
-		Prefix:  "< ",
+		Content: commands.CommandList,
+		Prefix:  commands.Prefix,
 	}, nil
 }

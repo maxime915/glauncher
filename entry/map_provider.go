@@ -7,8 +7,13 @@ import (
 )
 
 type MapProvider[T Entry] struct {
-	Content map[string]T
-	Prefix  string
+	Content           map[string]T
+	Prefix            string
+	RemoteIndependent bool
+}
+
+func (mp MapProvider[T]) IsRemoteIndependent() bool {
+	return mp.RemoteIndependent
 }
 
 func (mp MapProvider[T]) GetEntryReader() (io.Reader, error) {

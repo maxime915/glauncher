@@ -20,6 +20,8 @@ type EntryProvider interface {
 	GetEntryReader() (io.Reader, error)
 	// returns a value for an entry
 	Fetch(entry string) (Entry, bool)
+	// whether the provider is independent of the remote
+	IsRemoteIndependent() bool
 }
 
 type NewEntryProviderFun = func(*config.Config, map[string]string) (EntryProvider, error)

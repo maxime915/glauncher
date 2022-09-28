@@ -208,6 +208,10 @@ func NewPathProvider(conf *config.Config, options map[string]string) (EntryProvi
 	return provider, nil
 }
 
+func (p PathProvider) IsRemoteIndependent() bool {
+	return false
+}
+
 func (p PathProvider) GetEntryReader() (io.Reader, error) {
 	r, w := io.Pipe()
 

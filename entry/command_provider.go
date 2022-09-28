@@ -139,7 +139,8 @@ func NewCommandProvider(conf *config.Config, options map[string]string) (EntryPr
 	}
 
 	return CommandProvider{
-		Content: commands.CommandList,
-		Prefix:  commands.Prefix,
+		Content:           commands.CommandList,
+		Prefix:            commands.Prefix,
+		RemoteIndependent: true,
 	}, nil
 }

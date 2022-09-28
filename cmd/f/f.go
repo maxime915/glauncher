@@ -46,8 +46,12 @@ func StartF(ctx *cli.Context) error {
 	log.FatalIfErr(err)
 
 	// get the entry handler while fzf is working
-	remote, err := remote.GetRemote(conf)
-	log.FatalIfErr(err)
+	var userRemote remote.Remote = nil
+	if r, err := remote.GetRemote(conf); err == nil {
+		userRemote = r
+	} else {
+		log.Print(err)
+	}
 
 	// read flags
 	options := map[string]string{}
@@ -77,7 +81,10 @@ func StartF(ctx *cli.Context) error {
 
 		provider, err := newProviderFun(conf, options)
 		log.FatalIfErr(err)
-		providers = append(providers, provider)
+
+		if userRemote != nil || provider.IsRemoteIndependent() {
+			providers = append(providers, provider)
+		}
 	}
 
 	// combine all entries
@@ -105,6 +112,7 @@ func StartF(ctx *cli.Context) error {
 		options[key] = val
 	}
 
+	entryHandled := false
 	for _, provider := range providers {
 		// fetch entry
 		e, ok := provider.Fetch(selected)
@@ -122,14 +130,21 @@ func StartF(ctx *cli.Context) error {
 
 		// fallback on the backend if necessary
 		if err == entry.ErrRemoteRequired {
-			err = remote.HandleEntry(e, options)
+			if userRemote == nil {
+				continue
+			}
+			err = userRemote.HandleEntry(e, options)
 		}
 
 		log.FatalIfErr(err)
+		entryHandled = true
 
 		break
 	}
 
+	if !entryHandled {
+		log.Fatalf("no provider could handle the selection: %s\n", selected)
+	}
 	return nil
 }
 

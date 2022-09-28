@@ -2,6 +2,8 @@
 
 ## Road map
 
+- [X] allow some entries if the remote is not needed and not available
+    - commands would be available, that's better than nothing (plus vim config could be available)
 - [X] make config human readable
     - [X] use a map[string]interface{} instead of []byte for second stage deserialization
     - [X] JSON indentation and avoid escaping HTML sensitive character

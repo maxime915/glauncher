@@ -47,16 +47,23 @@ func NewFzfFrontend() *FzfFrontend {
 	return &FzfFrontend{}
 }
 
+func GetCtrlKeysOptions() []string {
+	return []string{"ctrl-t", "ctrl-a", "ctrl-p", "ctrl-n", "ctrl-d"}
+}
+
 func (f *FzfFrontend) StartFromReader(reader io.Reader, conf *config.Config) error {
 	f.selectionBuffer = bytes.Buffer{}
 
-	keys := []string{"ctrl-t", "ctrl-a", "ctrl-p", "ctrl-n"}
+	keys := GetCtrlKeysOptions()
 
 	args := []string{
 		"--multi",
 	}
 
-	for _, key := range keys {
+	for i, key := range keys {
+		if strings.Contains(key, "\n") {
+			return fmt.Errorf("keys[%d]=\"%v\" must not contain a newline", i, key)
+		}
 		action := fmt.Sprintf("%s:execute(echo %s)+accept", key, key)
 		args = append(args, "--bind", action)
 	}

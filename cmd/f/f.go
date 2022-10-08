@@ -145,6 +145,11 @@ func StartF(ctx *cli.Context) error {
 	if !entryHandled {
 		log.Fatalf("no provider could handle the selection: %s\n", selected)
 	}
+
+	if options["restart"] == "true" {
+		return StartF(ctx)
+	}
+
 	return nil
 }
 

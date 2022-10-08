@@ -25,8 +25,40 @@ func init() {
 	registerProvider(ApplicationProviderKey, NewApplicationProvider)
 }
 
-func (a Application) LaunchInFrontend(_ frontend.Frontend, _ map[string]string) error {
-	return ErrRemoteRequired
+func (a Application) LaunchInFrontend(_ frontend.Frontend, options map[string]string) error {
+	if options[frontend.OptionFzfKey] != "ctrl-d" {
+		return ErrRemoteRequired
+	}
+
+	// get the config
+	conf, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	// get application settings
+	settings, err := utils.ValFromJSON[applicationProviderSettings](conf.Providers[ApplicationProviderKey])
+	if err != nil {
+		return err
+	}
+
+	// update it
+	settings.Blacklist = append(settings.Blacklist, a.AppId)
+	settingsSerialized, err := utils.ValToJSON(settings)
+	if err != nil {
+		return err
+	}
+	conf.Providers[ApplicationProviderKey] = settingsSerialized
+
+	// commit
+	err = conf.Save()
+	if err != nil {
+		return err
+	}
+
+	options["restart"] = "true"
+
+	return nil
 }
 
 func (a Application) RemoteLaunch(options map[string]string) error {
@@ -138,7 +170,8 @@ func NewApplicationProvider(conf *config.Config, options map[string]string) (Ent
 	}
 
 	return ApplicationProvider{
-		Content: content,
-		Prefix:  "@ ",
+		Content:           content,
+		Prefix:            "@ ",
+		RemoteIndependent: true, // blacklisting apps is remote independent
 	}, nil
 }

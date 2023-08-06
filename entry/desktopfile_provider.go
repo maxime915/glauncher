@@ -112,7 +112,7 @@ func SetDfConfig(
 		return err
 	}
 
-	conf.Providers[ApplicationProviderKey] = settingsSerialized
+	conf.Providers[DesktopFileProviderKey] = settingsSerialized
 	return conf.Save()
 }
 
@@ -150,7 +150,7 @@ func NewDesktopFileProvider(conf *config.Config, options map[string]string) (Ent
 	return DesktopFileProvider{
 		Content:           desktopFiles,
 		Prefix:            "@ ",
-		RemoteIndependent: true, // blacklisting apps is remote independent
+		RemoteIndependent: true, // blacklisting a Desktop File is remote independent
 	}, nil
 }
 

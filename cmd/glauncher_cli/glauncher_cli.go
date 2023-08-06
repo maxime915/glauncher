@@ -14,30 +14,27 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var (
-	log  logger.Logger
-	conf *config.Config
-)
-
-func init() {
-	var err error
-	conf, err = config.LoadConfig()
+func loadConfig() (logger.Logger, *config.Config) {
+	conf, err := config.LoadConfig()
 	if err != nil {
 		logger.LoggerToStderr().Fatal(err)
 	}
 
 	if conf.LogFile == config.LogToStderr {
-		log = logger.LoggerToStderr()
+		return logger.LoggerToStderr(), conf
 	} else {
-		log, err = logger.LoggerToFile(conf.LogFile, false)
+		log, err := logger.LoggerToFile(conf.LogFile, false)
 
 		if err != nil {
 			logger.LoggerToStderr().Fatal(err)
 		}
+		return log, conf
 	}
 }
 
 func getRemote(flag string) (remote.Remote, error) {
+	_, conf := loadConfig()
+
 	switch flag {
 	case remote.RemoteHTTP:
 		httpConfig, err := remote.GetHTTPConfig(conf)
@@ -62,6 +59,8 @@ func getRemote(flag string) (remote.Remote, error) {
 
 // KillRemote : stop remote (either default or specified)
 func KillRemote(ctx *cli.Context) error {
+	log, _ := loadConfig()
+
 	if ctx.NArg() > 0 {
 		return cli.Exit("too many arguments", 1)
 	}
@@ -77,6 +76,8 @@ func StartRemote(cliCtx *cli.Context) error {
 	if cliCtx.NArg() > 0 {
 		return cli.Exit("too many arguments", 1)
 	}
+
+	log, _ := loadConfig()
 
 	remote, err := getRemote(cliCtx.String("remote"))
 	log.FatalIfErr(err)
@@ -105,6 +106,8 @@ func StartRemote(cliCtx *cli.Context) error {
 
 // SaveEntryProviderSettings : setup the config file from this function
 func SaveEntryProviderSettings(ctx *cli.Context) error {
+	log, conf := loadConfig()
+
 	if ctx.NArg() > 0 {
 		return cli.Exit("too many arguments", 1)
 	}
@@ -220,6 +223,8 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 }
 
 func main() {
+	log, _ := loadConfig()
+
 	app := &cli.App{
 		Name: "glauncher",
 		Commands: []*cli.Command{

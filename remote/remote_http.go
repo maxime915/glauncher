@@ -78,7 +78,7 @@ func GetHTTPConfig(conf *config.Config) (HTTPConfig, error) {
 }
 
 func defaultHTTPConfig() HTTPConfig {
-	return HTTPConfig{Addr: "localhost:8080"}
+	return HTTPConfig{Addr: "localhost:8876"}
 }
 
 func (c HTTPConfig) Validate() error {

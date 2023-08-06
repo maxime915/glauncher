@@ -55,7 +55,7 @@ func GetRPCConfig(conf *config.Config) (RPCConfig, error) {
 }
 
 func defaultRPCConfig() RPCConfig {
-	return RPCConfig{Addr: "localhost:8080"}
+	return RPCConfig{Addr: "localhost:8867"}
 }
 
 func (c RPCConfig) Validate() error {

@@ -1,15 +1,31 @@
 package config
 
+/*
+NOTE: to future readers
+- The file lock is *not* reentrant and this can cause deadlocks.
+- Exported methods must lock the file before reading or writings.
+- private methods must *not* lock the file, if access to the file is necessary, the lock must be passed as an argument
+- As such, exported method must *not* call other exported methods if perform any locking.
+*/
+
+// While the config file can be read, written to, and truncated while a process of glauncher (server, client, or cli) is running, it should not be unlinked as this may cause issues. Why ? dunno...
+
 import (
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 
+	"github.com/gofrs/flock"
 	"github.com/kirsle/configdir"
 )
 
 const LogToStderr = "--use-stderr"
+
+var (
+	errNotLocked = fmt.Errorf("config should be locked")
+)
 
 type Config struct {
 	// path to executables
@@ -41,18 +57,39 @@ func defaultConfig() *Config {
 	return &Config{}
 }
 
-func readConfigAt(configFile string) (*Config, error) {
-	err := os.MkdirAll(filepath.Dir(configFile), 0755)
+// lock returns a *locked* file lock on the configPath,
+// creating it and directories with correct permissions if necessary
+func lock(configPath string) (*flock.Flock, error) {
+	err := os.MkdirAll(filepath.Dir(configPath), 0755)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create config directory: %w", err)
 	}
 
-	if _, err = os.Stat(configFile); os.IsNotExist(err) {
+	lock := flock.New(configPath)
+	return lock, lock.Lock()
+}
+
+func readConfigAt(lock *flock.Flock) (*Config, error) {
+	if !lock.Locked() {
+		return nil, errNotLocked
+	}
+	configFile := lock.Path()
+
+	// the file should always exist: we've locked it
+	fStat, err := os.Stat(configFile)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("locked file doesn't exist: %w", err)
+	} else if err != nil {
+		return nil, err
+	}
+
+	// check for empty file
+	if fStat.Size() == 0 {
 		// create a new config file
 		config := defaultConfig()
 		config.ConfigFile = configFile
 
-		err = config.Save()
+		err = config.rawSave(lock)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create config file: %w", err)
 		}
@@ -72,7 +109,11 @@ func readConfigAt(configFile string) (*Config, error) {
 	}
 }
 
-func (c *Config) Save() error {
+func (c *Config) rawSave(lock *flock.Flock) error {
+	if !lock.Locked() {
+		return errNotLocked
+	}
+
 	// temporary file to avoid corruption
 	tempFile, err := os.CreateTemp("", "*.json")
 	if err != nil {
@@ -98,7 +139,13 @@ func (c *Config) Save() error {
 }
 
 func LoadConfigAt(configFile string) (*Config, error) {
-	config, err := readConfigAt(configFile)
+	lock, err := lock(configFile)
+	if err != nil {
+		return nil, err
+	}
+	defer lock.Unlock()
+
+	config, err := rawRead(lock)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +155,49 @@ func LoadConfigAt(configFile string) (*Config, error) {
 		return nil, err
 	}
 
-	err = config.Save()
+	err = config.saveIfChanged(lock)
 	return config, err
+}
+
+func rawRead(lock *flock.Flock) (*Config, error) {
+	if !lock.Locked() {
+		return nil, errNotLocked
+	}
+
+	config, err := readConfigAt(lock)
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func (c *Config) Save() error {
+	lock, err := lock(c.ConfigFile)
+	if err != nil {
+		return err
+	}
+	defer lock.Unlock()
+
+	return c.saveIfChanged(lock)
+}
+
+func (c *Config) saveIfChanged(lock *flock.Flock) error {
+	// make sure the copy is live
+	latest, err := rawRead(lock)
+	if err == errNotLocked {
+		panic("expected lock to be locked")
+	} else if err != nil {
+		return err
+	}
+
+	// if they are equal, no need for an update
+	if reflect.DeepEqual(*c, *latest) {
+		return nil
+	}
+
+	// some differences have been found, update the file
+	return c.rawSave(lock)
 }
 
 func (config *Config) validate() (err error) {

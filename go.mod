@@ -3,6 +3,7 @@ module github.com/maxime915/glauncher
 go 1.18
 
 require (
+	github.com/gofrs/flock v0.8.1
 	github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.14.0
@@ -16,5 +17,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

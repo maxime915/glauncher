@@ -54,7 +54,10 @@ type Config struct {
 
 func defaultConfig() *Config {
 	// validation is used to set default fields
-	return &Config{}
+	return &Config{
+		// deprecated
+		Blacklist: []string{"application-provider"},
+	}
 }
 
 // lock returns a *locked* file lock on the configPath,

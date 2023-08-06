@@ -40,8 +40,40 @@ func init() {
 	registerProvider(DesktopFileProviderKey, NewDesktopFileProvider)
 }
 
-func (d DesktopFile) LaunchInFrontend(_ frontend.Frontend, _ map[string]string) error {
-	return ErrRemoteRequired
+func (d DesktopFile) LaunchInFrontend(_ frontend.Frontend, options map[string]string) error {
+	if options[frontend.OptionFzfKey] != frontend.FzfKeyCTRL_D {
+		return ErrRemoteRequired
+	}
+
+	// get the config
+	conf, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	// get application settings
+	settings, err := utils.ValFromJSON[dfProviderSettings](conf.Providers[DesktopFileProviderKey])
+	if err != nil {
+		return err
+	}
+
+	// update it
+	settings.Blacklist = append(settings.Blacklist, d.Identifier)
+	settingsSerialized, err := utils.ValToJSON(settings)
+	if err != nil {
+		return err
+	}
+	conf.Providers[DesktopFileProviderKey] = settingsSerialized
+
+	// commit
+	err = conf.Save()
+	if err != nil {
+		return err
+	}
+
+	options["restart"] = "true"
+
+	return nil
 }
 
 func (d DesktopFile) RemoteLaunch(options map[string]string) error {
@@ -102,7 +134,14 @@ func NewDesktopFileProvider(conf *config.Config, options map[string]string) (Ent
 		}
 	}
 
-	desktopFiles, err := ScanMulti(candidatesDirectories())
+	blacklistSet := make(map[string]struct{}, len(settings.Blacklist))
+	if len(settings.Blacklist) == 0 {
+		blacklistSet = nil
+	}
+	for _, item := range settings.Blacklist {
+		blacklistSet[item] = struct{}{}
+	}
+	desktopFiles, err := ScanMulti(candidatesDirectories(), blacklistSet)
 
 	if err != nil {
 		return DesktopFileProvider{}, err
@@ -111,7 +150,7 @@ func NewDesktopFileProvider(conf *config.Config, options map[string]string) (Ent
 	return DesktopFileProvider{
 		Content:           desktopFiles,
 		Prefix:            "@ ",
-		RemoteIndependent: false,
+		RemoteIndependent: true, // blacklisting apps is remote independent
 	}, nil
 }
 
@@ -333,7 +372,7 @@ func candidatesDirectories() []string {
 	return directories
 }
 
-func ScanDirectory(dir string) (map[string]DesktopFile, error) {
+func ScanDirectory(dir string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {
 	file, err := os.Open(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -364,7 +403,8 @@ func ScanDirectory(dir string) (map[string]DesktopFile, error) {
 		if err != nil {
 			return nil, err
 		}
-		if show {
+		_, blacklisted := blacklist[df.Identifier]
+		if show && !blacklisted {
 			fileMap[df.Name] = df
 		}
 	}
@@ -386,7 +426,7 @@ func sendAndMerge(resChan chan map[string]DesktopFile, value map[string]DesktopF
 	}
 }
 
-func scanMultipleMT(directories []string) (map[string]DesktopFile, error) {
+func scanMultipleMT(directories []string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {
 	// avoid a dead-lock if there are no directories to scan
 	if len(directories) == 0 {
 		return make(map[string]DesktopFile), nil
@@ -399,7 +439,7 @@ func scanMultipleMT(directories []string) (map[string]DesktopFile, error) {
 
 	for _, dir := range directories {
 		go func(path string) {
-			dFiles, err := ScanDirectory(path)
+			dFiles, err := ScanDirectory(path, blacklist)
 			if err != nil {
 				errChan <- err
 			} else {
@@ -423,11 +463,11 @@ func scanMultipleMT(directories []string) (map[string]DesktopFile, error) {
 	return <-resChan, nil
 }
 
-func scanMultipleST(directories []string) (map[string]DesktopFile, error) {
+func scanMultipleST(directories []string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {
 	results := make(map[string]DesktopFile, 32*len(directories))
 
 	for _, dir := range directories {
-		dFiles, err := ScanDirectory(dir)
+		dFiles, err := ScanDirectory(dir, blacklist)
 		if err != nil {
 			return nil, err
 		}
@@ -437,6 +477,6 @@ func scanMultipleST(directories []string) (map[string]DesktopFile, error) {
 	return results, nil
 }
 
-func ScanMulti(directories []string) (map[string]DesktopFile, error) {
-	return scanMultipleMT(directories)
+func ScanMulti(directories []string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {
+	return scanMultipleMT(directories, blacklist)
 }

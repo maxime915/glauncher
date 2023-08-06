@@ -91,6 +91,22 @@ func (p Path) RemoteLaunch(options map[string]string) error {
 		return exec.Command("x-terminal-emulator", "--working-directory", path).Start()
 	}
 
+	// open in VSCode
+	if fzfKey == frontend.FzfKeyCTRL_V {
+		// check if path is a file
+		fileInfo, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
+
+		if !fileInfo.IsDir() {
+			// open parent instead
+			path = filepath.Dir(path)
+		}
+
+		return exec.Command("code", path).Run()
+	}
+
 	return ErrKeyNotHandled
 }
 

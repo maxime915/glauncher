@@ -62,7 +62,7 @@ func GetHTTPConfig(conf *config.Config) (HTTPConfig, error) {
 			return HTTPConfig{}, err
 		}
 
-		conf.Remotes[RemoteRPC] = serialized
+		conf.Remotes[RemoteHTTP] = serialized
 		err = conf.Save()
 		return config, err
 	}

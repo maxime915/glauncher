@@ -26,7 +26,7 @@ func init() {
 }
 
 func (a Application) LaunchInFrontend(_ frontend.Frontend, options map[string]string) error {
-	if options[frontend.OptionFzfKey] != "ctrl-d" {
+	if options[frontend.OptionFzfKey] != frontend.FzfKeyCTRL_D {
 		return ErrRemoteRequired
 	}
 

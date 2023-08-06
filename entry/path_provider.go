@@ -58,11 +58,11 @@ func (p Path) RemoteLaunch(options map[string]string) error {
 			return err
 		}
 
-		fzfKey = "ctrl-p"
+		fzfKey = frontend.FzfKeyCTRL_P
 	}
 
 	// open parent
-	if fzfKey == "ctrl-p" {
+	if fzfKey == frontend.FzfKeyCTRL_P {
 		parent := filepath.Dir(path)
 		_, err := xdgOpenPath(parent)
 
@@ -70,13 +70,13 @@ func (p Path) RemoteLaunch(options map[string]string) error {
 	}
 
 	// highlight in nautilus
-	if fzfKey == "ctrl-n" {
+	if fzfKey == frontend.FzfKeyCTRL_N {
 		// open file in nautilus and highlight it
 		return exec.Command("nautilus", path).Start()
 	}
 
 	// open in terminal
-	if fzfKey == "ctrl-t" {
+	if fzfKey == frontend.FzfKeyCTRL_T {
 		// check if path is a file
 		fileInfo, err := os.Stat(path)
 		if err != nil {

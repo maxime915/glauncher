@@ -14,6 +14,12 @@ import (
 
 const (
 	OptionFzfKey = "fzf-key"
+	FzfKeyCTRL_T = "ctrl-t"
+	FzfKeyCTRL_A = "ctrl-a"
+	FzfKeyCTRL_P = "ctrl-p"
+	FzfKeyCTRL_N = "ctrl-n"
+	FzfKeyCTRL_D = "ctrl-d"
+	FzfKeyCTRL_V = "ctrl-v"
 )
 
 var (
@@ -48,7 +54,7 @@ func NewFzfFrontend() *FzfFrontend {
 }
 
 func GetCtrlKeysOptions() []string {
-	return []string{"ctrl-t", "ctrl-a", "ctrl-p", "ctrl-n", "ctrl-d"}
+	return []string{FzfKeyCTRL_T, FzfKeyCTRL_A, FzfKeyCTRL_P, FzfKeyCTRL_N, FzfKeyCTRL_D, FzfKeyCTRL_V}
 }
 
 func (f *FzfFrontend) StartFromReader(reader io.Reader, conf *config.Config) error {

@@ -6,6 +6,7 @@ require (
 	github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.14.0
+	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/sync v0.0.0-20220907140024-f12130a52804
 )
 

@@ -135,7 +135,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 	log.FatalIfErr(err)
 
 	err = entry.AddCommandsToConfig(conf, map[string]entry.Command{
-		"<open-notebook": {
+		"open-notebook": {
 			Name: "/home/maxime/miniconda3/envs/ml_env/bin/jupyter",
 			Args: []string{
 				"notebook",
@@ -144,7 +144,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 			SecondDelay:    0,
 			CloseOnFailure: false,
 		},
-		"<start-notebook": {
+		"start-notebook": {
 			Name: "/home/maxime/miniconda3/envs/ml_env/bin/jupyter",
 			Args: []string{
 				"notebook",
@@ -153,7 +153,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 			SecondDelay:    0,
 			CloseOnFailure: false,
 		},
-		"<waker": {
+		"waker": {
 			Name: "/home/maxime/go/bin/waker",
 			Args: []string{
 				"remote-http",
@@ -163,7 +163,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 			SecondDelay:    0,
 			CloseOnFailure: false,
 		},
-		"<ipython": {
+		"ipython": {
 			Name: "/home/maxime/miniconda3/envs/ml_env/bin/python",
 			Args: []string{
 				"-c",
@@ -172,7 +172,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 			SecondDelay:    0,
 			CloseOnFailure: true,
 		},
-		"<ssh-dtop2": {
+		"ssh-dtop2": {
 			Name: "/usr/bin/ssh",
 			Args: []string{
 				"-o",
@@ -190,7 +190,7 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 			SecondDelay:    0,
 			CloseOnFailure: false,
 		},
-		"<ping": {
+		"ping": {
 			Name: "/usr/bin/ping",
 			Args: []string{
 				"-i",
@@ -202,21 +202,13 @@ func SaveEntryProviderSettings(ctx *cli.Context) error {
 			SecondDelay:    3,
 			CloseOnFailure: true,
 		},
-		"<lock": {
+		"lock": {
 			Name:           "/usr/bin/xdg-screensaver",
 			Args:           []string{"lock"},
 			SecondDelay:    0,
 			CloseOnFailure: false,
 		},
 	}, false)
-	log.FatalIfErr(err)
-
-	err = entry.SetApplicationConfig(
-		conf,
-		"/home/maxime/miniconda3/envs/gnome_dev/bin/python",
-		nil,
-		nil,
-	)
 	log.FatalIfErr(err)
 
 	return nil

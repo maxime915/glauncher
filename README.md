@@ -26,6 +26,7 @@
     (the JSON is hard to modify without risking errors)
 - [X] combined CLI
 - [X] Add build version to avoid version mismatch between the processes
+- [X] Avoid rewriting the configuration file if not needed
 
 ### Phantom symbols in fzf
 

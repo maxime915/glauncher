@@ -26,7 +26,6 @@ var (
 	header         = regexp.MustCompile(`(^|\n)\[.+\]\n`)
 	mainHeader     = regexp.MustCompile(`(^|\n)\[Desktop Entry\]\n`)
 	localizedEntry = regexp.MustCompile(`([A-Za-z0-9\-]+(\[[A-Za-z0-9\-]+\])?)\s*=\s*(.+)\r*`)
-	blankLine      = regexp.MustCompile(`\r*\n(\s|\r)*\n`)
 	separator      = []byte("=")
 )
 
@@ -177,8 +176,6 @@ type desktopFileInfo map[string]string
 
 // readKV the content of a desktop file. return an error if [DesktopEntry] isn't found
 func readKV(content []byte) (desktopFileInfo, error) {
-	data := make(map[string]string, 10)
-
 	// find [Desktop Entry]
 	pos := mainHeader.FindIndex(content)
 	if len(pos) == 0 {
@@ -193,7 +190,7 @@ func readKV(content []byte) (desktopFileInfo, error) {
 	}
 	// if len(pos) == 0 there is no more header, we can parse all content[...]
 
-	data = make(map[string]string, 10)
+	data := make(map[string]string, 10)
 	// find all key-value pairs and add them to the map
 	match_lst := localizedEntry.FindAll(content, -1)
 	for _, match := range match_lst {
@@ -435,7 +432,7 @@ func scanMultipleMT(directories []string, blacklist map[string]struct{}) (map[st
 	errChan := make(chan error, len(directories))
 	resChan := make(chan map[string]DesktopFile, 1)
 	done := make(chan struct{}, len(directories))
-	cancelled := make(chan struct{}, 0)
+	cancelled := make(chan struct{})
 
 	for _, dir := range directories {
 		go func(path string) {
@@ -461,20 +458,6 @@ func scanMultipleMT(directories []string, blacklist map[string]struct{}) (map[st
 	}
 
 	return <-resChan, nil
-}
-
-func scanMultipleST(directories []string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {
-	results := make(map[string]DesktopFile, 32*len(directories))
-
-	for _, dir := range directories {
-		dFiles, err := ScanDirectory(dir, blacklist)
-		if err != nil {
-			return nil, err
-		}
-		maps.Copy(results, dFiles)
-	}
-
-	return results, nil
 }
 
 func ScanMulti(directories []string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {

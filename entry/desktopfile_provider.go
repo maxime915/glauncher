@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	config "github.com/maxime915/glauncher/config"
 	"github.com/maxime915/glauncher/frontend"
@@ -369,6 +370,74 @@ func candidatesDirectories() []string {
 	return directories
 }
 
+func walkDesktopFiles(done <-chan struct{}, directories []string) (<-chan string, <-chan error) {
+	paths := make(chan string)
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(paths)
+
+		for _, dir := range directories {
+			file, err := os.Open(dir)
+			if err != nil {
+				if os.IsNotExist(err) {
+					continue
+				}
+				errs <- err
+				return
+			}
+
+			fStats, err := file.Stat()
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			if !fStats.IsDir() {
+				errs <- fmt.Errorf("not a directory")
+				return
+			}
+
+			files, err := filepath.Glob(filepath.Clean(dir) + "/*.desktop")
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			for _, dFile := range files {
+				paths <- dFile
+			}
+		}
+		errs <- nil
+	}()
+
+	return paths, errs
+}
+
+type result struct {
+	error
+	DesktopFile
+}
+
+func digester(blacklist map[string]struct{}, done <-chan struct{}, paths <-chan string, c chan<- result) {
+	for path := range paths {
+		df, show, err := Read(path)
+
+		if err == nil {
+			_, blacklisted := blacklist[df.Identifier]
+			if !show || blacklisted {
+				continue
+			}
+		}
+
+		select {
+		case c <- result{err, df}:
+		case <-done:
+			return
+		}
+	}
+}
+
 func ScanDirectory(dir string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {
 	file, err := os.Open(dir)
 	if err != nil {
@@ -460,6 +529,56 @@ func scanMultipleMT(directories []string, blacklist map[string]struct{}) (map[st
 	return <-resChan, nil
 }
 
+func scanMultipleST(directories []string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {
+	results := make(map[string]DesktopFile, 32*len(directories))
+
+	for _, dir := range directories {
+		dFiles, err := ScanDirectory(dir, blacklist)
+		if err != nil {
+			return nil, err
+		}
+		maps.Copy(results, dFiles)
+	}
+
+	return results, nil
+}
+
+func scanMultiplePL(dirs []string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {
+	done := make(chan struct{})
+	defer close(done)
+
+	paths, errC := walkDesktopFiles(done, dirs)
+
+	c := make(chan result)
+	var wg sync.WaitGroup
+	const numDigesters = 32
+	wg.Add(numDigesters)
+	for i := 0; i < numDigesters; i++ {
+		go func() {
+			digester(blacklist, done, paths, c)
+			wg.Done()
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(c)
+	}()
+
+	resMap := make(map[string]DesktopFile, 128)
+	for res := range c {
+		if res.error != nil {
+			return nil, res.error
+		}
+		resMap[res.DesktopFile.Name] = res.DesktopFile
+	}
+
+	if err := <-errC; err != nil {
+		return nil, err
+	}
+
+	return resMap, nil
+}
+
 func ScanMulti(directories []string, blacklist map[string]struct{}) (map[string]DesktopFile, error) {
-	return scanMultipleMT(directories, blacklist)
+	return scanMultiplePL(directories, blacklist)
 }
